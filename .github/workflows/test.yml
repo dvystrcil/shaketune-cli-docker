@@ -19,7 +19,7 @@ jobs:
           - { name: kalico-latest, repo: "https://github.com/KalicoCrew/kalico.git",  ref_pattern: "main"  }
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Resolve klipper ref
         id: klipper-ref
