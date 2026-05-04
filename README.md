@@ -4,7 +4,7 @@ A Docker image that runs [Klippain Shaketune](https://github.com/Frix-x/klippain
 
 ## What it does
 
-Upload your raw accelerometer data (`.csv` or `.stdata`) through the web UI, select a graph type, configure parameters, and get a PNG graph back in the browser.
+Upload your raw accelerometer data (`.csv`) through the web UI, select a graph type, configure parameters, and get a ShakeTune PNG graph back in the browser.
 
 Powered by:
 - [Klippain Shaketune](https://github.com/Frix-x/klippain-shaketune) for graph generation
