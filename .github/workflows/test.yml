@@ -1,0 +1,70 @@
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        graph: [belts, input_shaper]
+        klipper:
+          - { name: klipper-v12,   repo: "https://github.com/Klipper3d/klipper.git", ref_pattern: "v0.12" }
+          - { name: klipper-v13,   repo: "https://github.com/Klipper3d/klipper.git", ref_pattern: "v0.13" }
+          - { name: kalico-latest, repo: "https://github.com/KalicoCrew/kalico.git",  ref_pattern: "main"  }
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve klipper ref
+        id: klipper-ref
+        run: |
+          REF=$(git ls-remote --tags --sort="-v:refname" \
+                  "${{ matrix.klipper.repo }}" \
+                  "refs/tags/${{ matrix.klipper.ref_pattern }}*" \
+                | grep -v '\^{}' \
+                | head -1 \
+                | sed 's|.*refs/tags/||')
+          echo "ref=${REF:-${{ matrix.klipper.ref_pattern }}}" >> $GITHUB_OUTPUT
+
+      - name: Build test image (${{ matrix.klipper.name }})
+        run: |
+          docker build -f Dockerfile.test \
+            --build-arg KLIPPER_REPO=${{ matrix.klipper.repo }} \
+            --build-arg KLIPPER_REF=${{ steps.klipper-ref.outputs.ref }} \
+            -t shaketune-test-${{ matrix.klipper.name }}-${{ matrix.graph }} .
+
+      - name: Start container
+        run: |
+          docker run -d \
+            --name shaketune-${{ matrix.klipper.name }}-${{ matrix.graph }} \
+            -p 7860:7860 \
+            shaketune-test-${{ matrix.klipper.name }}-${{ matrix.graph }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install test deps
+        run: pip install -r tests/requirements.txt
+
+      - name: Run ${{ matrix.graph }} test
+        env:
+          SHAKETUNE_URL: http://localhost:7860
+        run: pytest tests/test_${{ matrix.graph }}.py -v
+
+      - name: Dump container logs on failure
+        if: failure()
+        run: docker logs shaketune-${{ matrix.klipper.name }}-${{ matrix.graph }}
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker stop shaketune-${{ matrix.klipper.name }}-${{ matrix.graph }} || true
+          docker rm   shaketune-${{ matrix.klipper.name }}-${{ matrix.graph }} || true

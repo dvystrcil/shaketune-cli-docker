@@ -1,0 +1,43 @@
+ARG KLIPPER_REPO=https://github.com/Klipper3d/klipper.git
+ARG KLIPPER_REF=master
+
+FROM python:3.12-alpine3.22
+
+ARG KLIPPER_REPO
+ARG KLIPPER_REF
+
+# numpy/openblas require build tools on Alpine musl libc
+# git is needed at runtime by GitPython (shaketune dependency)
+RUN apk add --no-cache \
+  git \
+  openblas-dev \
+  gcc \
+  g++ \
+  musl-dev \
+  gfortran
+
+RUN pip install --no-cache-dir uv
+
+RUN git clone --depth=1 --branch ${KLIPPER_REF} ${KLIPPER_REPO} /app/klipper
+RUN git clone --depth=1 https://github.com/Frix-x/klippain-shaketune.git /app/klippain-shaketune
+
+RUN uv venv /app/.venv
+
+RUN uv pip install --python /app/.venv/bin/python \
+  -r /app/klippain-shaketune/requirements.txt
+
+ENV PYTHONPATH=/app/klippain-shaketune
+
+RUN uv pip install --python /app/.venv/bin/python gradio
+
+COPY app/main.py /app/main.py
+RUN mkdir -p /tmp/shaketune
+
+ENV MPLBACKEND=Agg
+
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+  CMD wget -qO- http://localhost:7860 || exit 1
+
+EXPOSE 7860
+
+CMD ["/app/.venv/bin/python", "/app/main.py"]
