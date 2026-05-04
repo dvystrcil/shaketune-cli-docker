@@ -88,3 +88,4 @@ Image registry: `ghcr.io/beattune-core/shaketune-cli-docker`
 ## License
 
 This repository is MIT licensed. Shaketune and Klipper are subject to their own respective licenses.
+
